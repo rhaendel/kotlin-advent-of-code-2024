@@ -62,6 +62,15 @@ class CoordinatesTest : StringSpec({
         )
     }
 
+    "Directed neighbours" {
+        Coordinates(5, 5).directedNeighbours() shouldContainAll listOf(
+            NORTH to Coordinates(4, 5),
+            SOUTH to Coordinates(6, 5),
+            EAST to Coordinates(5, 6),
+            WEST to Coordinates(5, 4),
+        )
+    }
+
     "Direction turnRight() turns right" {
         NORTH.turnRight() shouldBe EAST
         EAST.turnRight() shouldBe SOUTH
@@ -93,5 +102,19 @@ class CoordinatesTest : StringSpec({
         EAST.isHorizontal() shouldBe true
         WEST.isVertical() shouldBe false
         WEST.isHorizontal() shouldBe true
+    }
+
+    "Opposite directions" {
+        NORTH.isOpposite(SOUTH) shouldBe true
+        SOUTH.isOpposite(NORTH) shouldBe true
+        EAST.isOpposite(WEST) shouldBe true
+        WEST.isOpposite(EAST) shouldBe true
+    }
+
+    "Difference between directions" {
+        NORTH - NORTH shouldBe 0
+        NORTH - EAST shouldBe 1
+        NORTH - SOUTH shouldBe 2
+        NORTH - WEST shouldBe 1
     }
 })

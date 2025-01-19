@@ -52,11 +52,14 @@ abstract class Grid<T>(input: List<String>) {
         overrides: Set<Coordinates> = setOf(),
         overrideChar: Char = '#',
         highlightPosition: Coordinates? = null,
-        highlightDirection: Direction? = null
+        highlightDirection: Direction? = null,
+        path: Map<Coordinates, Char> = mapOf(),
     ) {
         forEachCoordinates { position, element ->
             if (highlightPosition == position && highlightDirection != null) {
                 print(highlightDirection.asChar())
+            } else if (path.contains(position)) {
+                print(path[position])
             } else if (overrides.contains(position)) {
                 print(overrideChar)
             } else {

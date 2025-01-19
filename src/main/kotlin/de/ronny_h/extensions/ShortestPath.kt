@@ -26,7 +26,8 @@ data class ShortestPath<N>(val path: List<N>, val distance: Int)
  * @param d is the distance/cost function. d(m,n) provides the distance (or cost) to reach node n from node m.
  * @param h is the heuristic function. h(n) estimates the cost to reach goal from node n.
  */
-fun <N> aStar(start: N, goal: N, neighbors: (N) -> List<N>, d: (N, N) -> Int, h: (N) -> Int): ShortestPath<N> {
+fun <N> aStar(start: N, goal: N, neighbors: (N) -> List<N>, d: (N, N) -> Int, h: (N) -> Int,
+              printIt: (visited: Set<N>, current: N, additionalInfo: () -> String) -> Unit = {_, _, _ -> }): ShortestPath<N> {
     // For node n, fScore[n] := gScore[n] + h(n). fScore[n] represents our current best guess as to
     // how cheap a path could be from start to finish if it goes through n.
     val fScore = mutableMapOf<N, Int>() // map with default value of Infinity
@@ -67,6 +68,9 @@ fun <N> aStar(start: N, goal: N, neighbors: (N) -> List<N>, d: (N, N) -> Int, h:
                 if (neighbor !in openSet) {
                     openSet.add(neighbor)
                 }
+            }
+            printIt(cameFrom.keys, neighbor) {
+                "current: $current=${fScore[current]}, neighbor: $neighbor=${fScore[neighbor]}, open: " + openSet.joinToString { "$it=${fScore[it]}" }
             }
         }
     }
