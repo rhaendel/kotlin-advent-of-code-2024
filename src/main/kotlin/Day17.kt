@@ -1,5 +1,3 @@
-import kotlin.math.pow
-import kotlin.properties.Delegates
 
 fun main() {
     val day = "Day17"
@@ -7,7 +5,7 @@ fun main() {
     println("$day part 1")
 
     fun part1(input: List<String>): String {
-        return ThreeBitComputer().runProgram(input)
+        return ThreeBitComputer(input).runProgram().joinToString(",")
     }
 
     printAndCheck(
@@ -23,6 +21,37 @@ fun main() {
 
     val input = readInput(day)
     printAndCheck(input, ::part1, "4,1,7,6,4,1,0,2,7")
+
+
+    println("$day part 2")
+
+    fun part2(input: List<String>): Long {
+        val computer = ThreeBitComputer(input)
+        val initState = computer.save()
+        var registerA = 0L
+        println("${computer.program} ${computer.program.size}")
+        while (computer.runProgram() != computer.program) {
+            registerA++
+            if (registerA % 1000000 == 0L) {
+                println("$registerA - ${computer.getOutputList()} ${computer.getOutputList().size}")
+            }
+            computer.restore(initState, registerA)
+        }
+        return registerA
+    }
+
+    printAndCheck(
+        """
+            Register A: 2024
+            Register B: 0
+            Register C: 0
+
+            Program: 0,3,5,4,3,0
+        """.trimIndent().lines(),
+        ::part2, 117440
+    )
+
+    printAndCheck(input, ::part2, 0)
 }
 
 /**
@@ -49,50 +78,53 @@ fun main() {
  * 6       bdv          division of A and 2^<combo operand>, truncated result in B
  * 7       cdv          division of A and 2^<combo operand>, truncated result in C
  */
-private class ThreeBitComputer {
+private class ThreeBitComputer(input: List<String>) {
 
     private val instructionStep = 2
 
-    private lateinit var program: List<Int>
-    private var registerA by Delegates.notNull<Int>()
-    private var registerB by Delegates.notNull<Int>()
-    private var registerC by Delegates.notNull<Int>()
+    val program = input.readProgram()
+    private var registerA = input.readRegister('A')
+    private var registerB = input.readRegister('B')
+    private var registerC = input.readRegister('C')
     private var instructionPointer = 0
 
     private val output = mutableListOf<Int>()
 
-    fun init(input: List<String>) {
-        program = input.readProgram()
-        registerA = input.readRegister('A')
-        registerB = input.readRegister('B')
-        registerC = input.readRegister('C')
-        instructionPointer = 0
-        output.clear()
-    }
+    fun getOutputList(): List<Int> = output
 
     private val instructions: List<(Int) -> Unit> = listOf(
-        { op -> registerA = (registerA / 2.0.pow(combo(op))).toInt(); next() }, // 0 adv
-        { op -> registerB = (registerB xor op)                      ; next() }, // 1 bxl
+        { op -> registerA = (registerA shr combo(op).toIntChecked()); next() }, // 0 adv; A/2^x = A shr x
+        { op -> registerB = (registerB xor op.toLong())             ; next() }, // 1 bxl
         { op -> registerB = (combo(op) % 8) and 7                   ; next() }, // 2 bst; 7=111 -> take only lowest 3 bits
-        { op -> if (registerA == 0) next() else instructionPointer = op },      // 3 jnz
+        { op -> if (registerA == 0L) next() else instructionPointer = op },     // 3 jnz
         { _  -> registerB = (registerB xor registerC)               ; next() }, // 4 bxc
-        { op -> output.add((combo(op) % 8) and 7)                   ; next() }, // 5 out
-        { op -> registerB = (registerA / 2.0.pow(combo(op))).toInt(); next() }, // 6 bdv
-        { op -> registerC = (registerA / 2.0.pow(combo(op))).toInt(); next() }, // 7 cdv
+        { op -> output.add(((combo(op) % 8) and 7).toInt())         ; next() }, // 5 out
+        { op -> registerB = (registerA shr combo(op).toIntChecked()); next() }, // 6 bdv
+        { op -> registerC = (registerA shr combo(op).toIntChecked()); next() }, // 7 cdv
     )
 
-    fun runProgram(input: List<String>): String {
-        init(input)
+    fun runProgram(): List<Int> {
         while (instructionPointer < program.size) {
             val instruction = program[instructionPointer]
             val op = program[instructionPointer + 1]
             instructions[instruction].invoke(op)
         }
-        return output.joinToString(",")
+        return output
+    }
+
+    fun save() = State(registerA, registerB, registerC, instructionPointer)
+    fun restore(state: State, registerAOverride: Long) {
+        this.registerA = registerAOverride
+        this.registerB = state.registerB
+        this.registerC = state.registerC
+        this.instructionPointer = state.instructionPointer
+        this.output.clear()
     }
 
     private fun combo(op: Int) = when (op) {
-        in 1..3 -> op
+        1 -> 1L
+        2 -> 2L
+        3 -> 3L
         4 -> registerA
         5 -> registerB
         6 -> registerC
@@ -106,11 +138,25 @@ private class ThreeBitComputer {
     private fun List<String>.readRegister(register: Char) =
         first { it.startsWith("Register $register: ") }
             .substringAfter("Register $register: ")
-            .toInt()
+            .toLong()
 
     private fun List<String>.readProgram() =
         first { it.startsWith("Program: ") }
             .substringAfter("Program: ")
             .split(",")
             .map(String::toInt)
+
+    data class State(
+        val registerA: Long,
+        val registerB: Long,
+        val registerC: Long,
+        val instructionPointer: Int,
+    )
+}
+
+private fun Long.toIntChecked(): Int {
+    if (this > Int.MAX_VALUE) {
+        throw IllegalArgumentException("$this exceeds Int range")
+    }
+    return this.toInt()
 }
